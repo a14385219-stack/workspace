@@ -22,22 +22,13 @@
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
     window.storage = {
-      get: async (key) => {
-        const v = localStorage.getItem(key);
-        if (v === null) throw new Error("Key not found: " + key);
-        return { key, value: v };
-      },
-      set: async (key, value) => { localStorage.setItem(key, value); return { key, value }; },
-      delete: async (key) => { localStorage.removeItem(key); return { key, deleted: true }; },
-      list: async (prefix) => {
-        const keys = Object.keys(localStorage).filter(k => prefix ? k.startsWith(prefix) : true);
-        return { keys };
-      }
+      get: async (key) => { const v=localStorage.getItem(key); if(v===null) throw new Error("Key not found"); return {key,value:v}; },
+      set: async (key,value) => { localStorage.setItem(key,value); return {key,value}; },
+      delete: async (key) => { localStorage.removeItem(key); return {key,deleted:true}; },
+      list: async (prefix) => { const keys=Object.keys(localStorage).filter(k=>prefix?k.startsWith(prefix):true); return {keys}; }
     };
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js').catch(() => {});
-      });
+    if('serviceWorker' in navigator){
+      window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
     }
   </script>
   <script type="text/babel" data-presets="react">
@@ -185,7 +176,7 @@ function GanttView({tasks,onSave}){
           </div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
             <div><div style={sect}>狀態</div><Sel value={form.status} onChange={e=>setForm(f=>({...f,status:e.target.value}))}>{Object.entries(STATUS_MAP).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}</Sel></div>
-            <div><div style={sect}>{"進度 "+form.progress+"%"}</div><input type="range" min={0} max={100} step={5} value={form.progress} onChange={e=>setForm(f=>({...f,progress:+e.target.value}))} style={{width:"100%",accentColor:"#3b82f6",marginTop:8}}/></div>
+            <div style={{background:"rgba(59,130,246,0.1)",borderRadius:8,padding:"8px 12px"}}><div style={{fontFamily:"monospace",fontSize:10,color:"#60a5fa",marginBottom:4}}>{"⏱ 工進（自動計算）"}</div><div style={{fontFamily:"monospace",fontSize:13,fontWeight:700,color:"#60a5fa"}}>{(form.start&&form.end?timeProgress(form.start,form.end):0)+"%"}</div><div style={{fontSize:10,color:"rgba(255,255,255,0.35)",marginTop:2}}>{form.start+" → "+form.end}</div></div>
           </div>
           <ColorPick value={form.color} onChange={v=>setForm(f=>({...f,color:v}))}/>
           <Inp placeholder="備註" value={form.note} onChange={e=>setForm(f=>({...f,note:e.target.value}))}/>
@@ -291,8 +282,8 @@ function GanttView({tasks,onSave}){
                     <div style={{position:"relative",height:72,flex:1,overflow:"visible"}}>
                       {barW>0&&(
                         <div style={{position:"absolute",top:28,left:barL-clipL,width:barW,height:26,borderRadius:6,background:clr+"35",border:"1px solid "+clr+"55",overflow:"hidden"}}>
-                          <div style={{position:"absolute",top:0,left:0,height:"100%",width:timeProgress(task.start,task.end)+"%",background:clr+"70",borderRadius:6}}/>
-                          {barW>44&&<div style={{position:"absolute",top:"50%",left:6,transform:"translateY(-50%)",fontSize:10,fontFamily:"monospace",color:"#fff",whiteSpace:"nowrap"}}>{timeProgress(task.start,task.end)+"%"}</div>}
+                          <div style={{position:"absolute",top:0,left:0,height:"100%",width:"100%",background:clr+"20",borderRadius:6}}/>
+                          {barW>44&&<div style={{position:"absolute",top:"50%",left:6,transform:"translateY(-50%)",fontSize:10,fontFamily:"monospace",color:"rgba(255,255,255,0.5)",whiteSpace:"nowrap"}}>{task.name}</div>}
                         </div>
                       )}
                       {(task.expenses||[]).map((e,ei)=>{
@@ -785,7 +776,7 @@ function NotesView({notes,onSave}){
 function DashboardView({tasks,events}){
   const td=tStr(),now=new Date();
   const total=tasks.length,bySt=Object.fromEntries(Object.keys(STATUS_MAP).map(k=>[k,tasks.filter(t=>t.status===k).length]));
-  const avgP=total>0?Math.round(tasks.reduce((a,t)=>a+(t.progress||0),0)/total):0;
+  const avgP=total>0?Math.round(tasks.reduce((a,t)=>a+timeProgress(t.start,t.end),0)/total):0;
   const ovrd=tasks.filter(t=>t.end<td&&t.status!=="done").length;
   const dueW=tasks.filter(t=>t.end>=td&&t.end<=addD(td,7)&&t.status!=="done").length;
   const mK=now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0");
@@ -825,7 +816,7 @@ function DashboardView({tasks,events}){
           ?<div style={{textAlign:"center",color:"rgba(255,255,255,0.2)",fontSize:12,fontFamily:"monospace",padding:"12px 0"}}>近7天無到期任務</div>
           :tasks.filter(t=>t.end>=td&&t.end<=addD(td,7)&&t.status!=="done").sort((a,b)=>a.end.localeCompare(b.end)).map(t=>{const dl=dbw(td,t.end);return(
             <div key={t.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid rgba(255,255,255,0.05)"}}>
-              <div><div style={{fontSize:13,fontWeight:500}}>{t.name}</div><div style={{fontFamily:"monospace",fontSize:10,color:"rgba(255,255,255,0.32)",marginTop:2}}>{(t.owner||"無負責人")+" 進度 "+(t.progress||0)+"%"}</div></div>
+              <div><div style={{fontSize:13,fontWeight:500}}>{t.name}</div><div style={{fontFamily:"monospace",fontSize:10,color:"rgba(255,255,255,0.32)",marginTop:2}}>{(t.owner||"無負責人")+" → "+t.end}</div></div>
               <div style={{textAlign:"right",flexShrink:0,marginLeft:12}}><SBadge status={t.status}/><div style={{fontFamily:"monospace",fontSize:10,color:dl<=2?"#ef4444":"#f97316",marginTop:3}}>{dl===0?"今天到期":"還剩 "+dl+" 天"}</div></div>
             </div>
           );})}
