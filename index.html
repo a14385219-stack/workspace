@@ -174,10 +174,7 @@ function GanttView({tasks,onSave}){
             <div><div style={sect}>開始</div><Inp type="date" value={form.start} onChange={e=>setForm(f=>({...f,start:e.target.value}))}/></div>
             <div><div style={sect}>結束</div><Inp type="date" value={form.end} onChange={e=>setForm(f=>({...f,end:e.target.value}))}/></div>
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-            <div><div style={sect}>狀態</div><Sel value={form.status} onChange={e=>setForm(f=>({...f,status:e.target.value}))}>{Object.entries(STATUS_MAP).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}</Sel></div>
-            <div style={{background:"rgba(59,130,246,0.1)",borderRadius:8,padding:"8px 12px"}}><div style={{fontFamily:"monospace",fontSize:10,color:"#60a5fa",marginBottom:4}}>{"⏱ 工進（自動計算）"}</div><div style={{fontFamily:"monospace",fontSize:13,fontWeight:700,color:"#60a5fa"}}>{(form.start&&form.end?timeProgress(form.start,form.end):0)+"%"}</div><div style={{fontSize:10,color:"rgba(255,255,255,0.35)",marginTop:2}}>{form.start+" → "+form.end}</div></div>
-          </div>
+          
           <ColorPick value={form.color} onChange={v=>setForm(f=>({...f,color:v}))}/>
           <Inp placeholder="備註" value={form.note} onChange={e=>setForm(f=>({...f,note:e.target.value}))}/>
           <div style={{height:1,background:"rgba(255,255,255,0.07)"}}/>
