@@ -23,7 +23,6 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-    // localStorage shim for window.storage API
     window.storage = {
       get: async (key) => {
         const v = localStorage.getItem(key);
@@ -43,13 +42,9 @@
         return { keys };
       }
     };
-
-    // Register Service Worker for PWA
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js').then(reg => {
-          console.log('SW registered');
-        }).catch(err => console.log('SW failed:', err));
+        navigator.serviceWorker.register('sw.js').catch(() => {});
       });
     }
   </script>
@@ -691,7 +686,7 @@ function NotesView({notes,onSave}){
             {(current.items||[]).map((item,i)=>(
               <div key={item.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:"1px solid rgba(255,255,255,0.05)"}}>
                 <div onClick={()=>setF({items:current.items.map(it=>it.id===item.id?{...it,done:!it.done}:it)})} style={{width:22,height:22,borderRadius:"50%",border:"2px solid "+(item.done?"#22c55e":"rgba(255,255,255,0.3)"),background:item.done?"#22c55e":"transparent",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0,transition:"all .15s"}}>
-                  {item.done&&<span style={{color:"#fff",fontSize:12,fontWeight:700}}>v</span>}
+                  {item.done&&<span style={{color:"#fff",fontSize:12,fontWeight:700}}>✓</span>}
                 </div>
                 <input value={item.text} onChange={e=>setF({items:current.items.map(it=>it.id===item.id?{...it,text:e.target.value}:it)})} placeholder={"項目 "+(i+1)} style={{flex:1,background:"transparent",border:"none",color:item.done?"rgba(255,255,255,0.35)":"#e2e8f0",fontSize:15,fontFamily:"'Noto Sans TC',sans-serif",outline:"none",textDecoration:item.done?"line-through":"none"}}/>
                 <button onClick={()=>setF({items:current.items.filter(it=>it.id!==item.id)})} style={{background:"none",border:"none",color:"rgba(255,255,255,0.25)",fontSize:16,cursor:"pointer",padding:"0 4px"}}>X</button>
@@ -712,13 +707,13 @@ function NotesView({notes,onSave}){
     const ac=note.color||"#f5c842",isCL=note.mode==="checklist",dn=(note.items||[]).filter(it=>it.done).length,tot=(note.items||[]).length;
     return(
       <div onClick={()=>{setCurrent(note);setView("edit");}} style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:14,padding:"14px 14px 10px",cursor:"pointer",borderTop:"3px solid "+ac,position:"relative"}}>
-        <button onClick={e=>{e.stopPropagation();pinNote(note.id);}} style={{position:"absolute",top:10,right:10,background:"none",border:"none",fontSize:13,cursor:"pointer",color:note.pinned?"#f5c842":"rgba(255,255,255,0.2)"}}>P</button>
+        <button onClick={e=>{e.stopPropagation();pinNote(note.id);}} style={{position:"absolute",top:10,right:10,background:"none",border:"none",fontSize:13,cursor:"pointer",color:note.pinned?"#f5c842":"rgba(255,255,255,0.2)"}}>📌</button>
         {note.title&&<div style={{fontSize:14,fontWeight:700,marginBottom:5,paddingRight:24,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{note.title}</div>}
         {isCL?(
           <div style={{display:"flex",flexDirection:"column",gap:4}}>
             {(note.items||[]).slice(0,wide?5:3).map(it=>(
               <div key={it.id} onClick={e=>{e.stopPropagation();checkItem(note.id,it.id);}} style={{display:"flex",alignItems:"center",gap:6}}>
-                <div style={{width:16,height:16,borderRadius:"50%",border:"1.5px solid "+(it.done?"#22c55e":"rgba(255,255,255,0.3)"),background:it.done?"#22c55e":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{it.done&&<span style={{color:"#fff",fontSize:10,fontWeight:700}}>v</span>}</div>
+                <div style={{width:16,height:16,borderRadius:"50%",border:"1.5px solid "+(it.done?"#22c55e":"rgba(255,255,255,0.3)"),background:it.done?"#22c55e":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{it.done&&<span style={{color:"#fff",fontSize:10,fontWeight:700}}>✓</span>}</div>
                 <span style={{fontSize:12,color:it.done?"rgba(255,255,255,0.35)":"rgba(255,255,255,0.7)",textDecoration:it.done?"line-through":"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{it.text||"空白"}</span>
               </div>
             ))}
@@ -738,10 +733,10 @@ function NotesView({notes,onSave}){
         <button onClick={newNote} style={{width:34,height:34,borderRadius:"50%",background:"#3b82f6",border:"none",color:"#fff",fontSize:20,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
       </div>
       <div style={{position:"relative",marginBottom:14}}>
-        <span style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",color:"rgba(255,255,255,0.3)",fontSize:14}}>S</span>
+        <span style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",color:"rgba(255,255,255,0.3)",fontSize:14}}>🔍</span>
         <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="搜尋備忘錄" style={{width:"100%",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:12,padding:"10px 12px 10px 36px",color:"#e2e8f0",fontSize:14,fontFamily:"'Noto Sans TC',sans-serif",outline:"none"}}/>
       </div>
-      {notes.length===0&&<div style={{textAlign:"center",padding:"60px 0",color:"rgba(255,255,255,0.2)"}}><div style={{fontSize:48,marginBottom:12}}>N</div><div style={{fontSize:14,fontWeight:500,marginBottom:6}}>尚無備忘錄</div></div>}
+      {notes.length===0&&<div style={{textAlign:"center",padding:"60px 0",color:"rgba(255,255,255,0.2)"}}><div style={{fontSize:48,marginBottom:12}}>📝</div><div style={{fontSize:14,fontWeight:500,marginBottom:6}}>尚無備忘錄</div></div>}
       {pin.length>0&&<div style={{marginBottom:14}}><div style={{fontFamily:"monospace",fontSize:10,color:"rgba(255,255,255,0.3)",marginBottom:8}}>置頂</div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>{pin.map(n=><NC key={n.id} note={n}/>)}</div></div>}
       {unp.length>0&&<div>{pin.length>0&&<div style={{fontFamily:"monospace",fontSize:10,color:"rgba(255,255,255,0.3)",marginBottom:8}}>其他備忘錄</div>}<div style={{display:"flex",flexDirection:"column",gap:8}}>{unp.map(n=><NC key={n.id} note={n} wide/>)}</div></div>}
     </div>
@@ -767,10 +762,10 @@ function DashboardView({tasks,events}){
   return(
     <div style={{display:"flex",flexDirection:"column",gap:14}}>
       <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10}}>
-        <SC icon="T" label="總任務數" value={total} sub={"平均進度 "+avgP+"%"} color="#3b82f6"/>
-        <SC icon="!" label="已逾期" value={ovrd} sub={"本週到期 "+dueW+" 項"} color={ovrd>0?"#ef4444":"#22c55e"}/>
-        <SC icon="C" label="今日活動" value={tE} sub={"本月共 "+mE+" 個"} color="#a855f7"/>
-        <SC icon="$" label="預算使用率" value={bPct+"%"} sub={bOv?"已超支":""} color={bOv?"#ef4444":bPct>=80?"#f97316":"#22c55e"}/>
+        <SC icon="📋" label="總任務數" value={total} sub={"平均進度 "+avgP+"%"} color="#3b82f6"/>
+        <SC icon="⚠️" label="已逾期" value={ovrd} sub={"本週到期 "+dueW+" 項"} color={ovrd>0?"#ef4444":"#22c55e"}/>
+        <SC icon="📅" label="今日活動" value={tE} sub={"本月共 "+mE+" 個"} color="#a855f7"/>
+        <SC icon="💰" label="預算使用率" value={bPct+"%"} sub={bOv?"已超支":""} color={bOv?"#ef4444":bPct>=80?"#f97316":"#22c55e"}/>
       </div>
       <Card style={{padding:16}}>
         <div style={{fontFamily:"monospace",fontSize:11,color:"rgba(255,255,255,0.35)",marginBottom:12}}>預算總覽</div>
@@ -860,7 +855,7 @@ function App(){
             </div>
             <div style={{display:"flex",alignItems:"center",gap:10}}>
               <div style={{fontFamily:"monospace",fontSize:10,color:syncing?"#fbbf24":"rgba(255,255,255,0.25)"}}>{syncing?"同步中...":lastSync?("v "+lastSync.toLocaleTimeString("zh-TW",{hour:"2-digit",minute:"2-digit"})+" 同步"):"共享模式"}</div>
-              <button onClick={()=>setShowBackup(v=>!v)} style={{width:30,height:30,borderRadius:8,border:"1px solid rgba(255,255,255,0.12)",background:showBackup?"rgba(59,130,246,0.2)":"rgba(255,255,255,0.05)",color:"#e2e8f0",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>B</button>
+              <button onClick={()=>setShowBackup(v=>!v)} style={{width:30,height:30,borderRadius:8,border:"1px solid rgba(255,255,255,0.12)",background:showBackup?"rgba(59,130,246,0.2)":"rgba(255,255,255,0.05)",color:"#e2e8f0",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>🗄</button>
             </div>
           </div>
           {showBackup&&(
