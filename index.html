@@ -7,10 +7,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="WorkSpace"/>
   <meta name="theme-color" content="#0a0a0a"/>
-  <meta name="description" content="WorkSpace 共同協作平台"/>
   <title>WorkSpace</title>
   <link rel="manifest" href="manifest.json"/>
-  <link rel="apple-touch-icon" href="icon-192.png"/>
   <style>
     *{margin:0;padding:0;box-sizing:border-box;}
     html,body,#root{height:100%;background:#0a0a0a;}
@@ -29,14 +27,8 @@
         if (v === null) throw new Error("Key not found: " + key);
         return { key, value: v };
       },
-      set: async (key, value) => {
-        localStorage.setItem(key, value);
-        return { key, value };
-      },
-      delete: async (key) => {
-        localStorage.removeItem(key);
-        return { key, deleted: true };
-      },
+      set: async (key, value) => { localStorage.setItem(key, value); return { key, value }; },
+      delete: async (key) => { localStorage.removeItem(key); return { key, deleted: true }; },
       list: async (prefix) => {
         const keys = Object.keys(localStorage).filter(k => prefix ? k.startsWith(prefix) : true);
         return { keys };
@@ -59,6 +51,25 @@ const STATUS_MAP = {
   todo:  { label:"待開始", color:"#64748b" },
   doing: { label:"進行中", color:"#3b82f6" },
   done:  { label:"已完成", color:"#22c55e" },
+};
+
+// 根據日期自動計算狀態（若已手動設為 done 則保留）
+const autoStatus = (task) => {
+  const td = tStr();
+  if (task.status === "done") return "done"; // 手動完成保留
+  if (td < task.start) return "todo";        // 還沒開始
+  if (td > task.end)   return "doing";       // 已過期但未完成仍算進行中
+  return "doing";                            // 在時間範圍內
+};
+
+// 根據時間計算工進百分比
+const timeProgress = (start, end) => {
+  const td = tStr();
+  if (td < start) return 0;
+  if (td > end)   return 100;
+  const total = dbw(start, end);
+  if (total <= 0) return 100;
+  return Math.min(100, Math.round(dbw(start, td) / total * 100));
 };
 const KEYS = { CAL:"ws-cal-v3", GANTT:"ws-gantt-v3", KANBAN:"ws-kanban-v3", NOTES:"ws-notes-v3" };
 
@@ -95,11 +106,34 @@ const Sel=({style,...p})=>(<select style={{background:"rgba(255,255,255,0.06)",b
 const Card=({children,style})=>(<div style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:14,...style}}>{children}</div>);
 const SBadge=({status,onClick})=>{const s=STATUS_MAP[status]||STATUS_MAP.todo;return <span onClick={onClick} style={{fontSize:10,padding:"2px 8px",borderRadius:20,background:s.color+"28",color:s.color,fontFamily:"monospace",whiteSpace:"nowrap",cursor:onClick?"pointer":"default"}}>{s.label}</span>;};
 const ColorPick=({value,onChange})=>(<div style={{display:"flex",gap:7,alignItems:"center"}}><span style={{fontSize:11,color:"rgba(255,255,255,0.35)",fontFamily:"monospace"}}>顏色</span>{COLORS.map((c,i)=><div key={i} onClick={()=>onChange(i)} style={{width:20,height:20,borderRadius:"50%",background:c.bg,border:value===i?"2px solid #fff":"2px solid transparent",cursor:"pointer"}}/>)}</div>);
-function BudgetMini({budget,expenses}){
+function BudgetMini({budget,expenses,start,end}){
   const s=(expenses||[]).reduce((a,e)=>a+Number(e.amount||0),0),b=Number(budget||0);
-  if(b===0&&s===0)return null;
+  const tp=(start&&end)?timeProgress(start,end):null;
+  const showB=b>0||s>0;
+  if(!showB&&tp===null)return null;
   const p=b>0?Math.min(Math.round(s/b*100),100):0,over=s>b&&b>0;
-  return(<div style={{marginTop:3}}><div style={{height:3,background:"rgba(255,255,255,0.07)",borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",width:p+"%",background:over?"#ef4444":p>=80?"#f97316":"#22c55e",borderRadius:2}}/></div><div style={{fontFamily:"monospace",fontSize:9,color:over?"#f87171":"rgba(255,255,255,0.3)",marginTop:1}}>{"\u{1F4B0} "+p+"% "+(over?"超支！":"已用")}</div></div>);
+  return(
+    <div style={{marginTop:3,display:"flex",flexDirection:"column",gap:2}}>
+      {showB&&(<div>
+        <div style={{display:"flex",justifyContent:"space-between",marginBottom:1}}>
+          <span style={{fontFamily:"monospace",fontSize:8,color:"rgba(255,255,255,0.3)"}}>{"\u{1F4B0}預算"}</span>
+          <span style={{fontFamily:"monospace",fontSize:8,color:over?"#f87171":"rgba(255,255,255,0.3)"}}>{p+"%"+(over?" 超支":"")}</span>
+        </div>
+        <div style={{height:3,background:"rgba(255,255,255,0.07)",borderRadius:2,overflow:"hidden"}}>
+          <div style={{height:"100%",width:p+"%",background:over?"#ef4444":p>=80?"#f97316":"#22c55e",borderRadius:2}}/>
+        </div>
+      </div>)}
+      {tp!==null&&(<div>
+        <div style={{display:"flex",justifyContent:"space-between",marginBottom:1}}>
+          <span style={{fontFamily:"monospace",fontSize:8,color:"rgba(255,255,255,0.3)"}}>{"\u23F1\uFE0F工進"}</span>
+          <span style={{fontFamily:"monospace",fontSize:8,color:"rgba(255,255,255,0.3)"}}>{tp+"%"}</span>
+        </div>
+        <div style={{height:3,background:"rgba(255,255,255,0.07)",borderRadius:2,overflow:"hidden"}}>
+          <div style={{height:"100%",width:tp+"%",background:"#3b82f6",borderRadius:2}}/>
+        </div>
+      </div>)}
+    </div>
+  );
 }
 
 const EMPTY_GANTT=()=>({name:"",owner:"",start:tStr(),end:addD(tStr(),6),status:"todo",color:0,progress:0,note:"",budget:"",expenses:[],manpower:[]});
@@ -238,10 +272,10 @@ function GanttView({tasks,onSave}){
                         <span style={{fontSize:12,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1}}>{task.name}</span>
                       </div>
                       <div style={{display:"flex",alignItems:"center",gap:5,marginTop:2,flexWrap:"wrap"}}>
-                        <SBadge status={task.status} onClick={()=>cycle(task.id)}/>
+                        <SBadge status={task.status==="done"?"done":autoStatus(task)} onClick={()=>cycle(task.id)}/>
                         {task.owner&&<span style={{fontSize:9,color:"rgba(255,255,255,0.28)",fontFamily:"monospace"}}>{task.owner}</span>}
                       </div>
-                      <BudgetMini budget={task.budget} expenses={task.expenses}/>
+                      <BudgetMini budget={task.budget} expenses={task.expenses} start={task.start} end={task.end}/>
                       <div style={{display:"flex",gap:4,marginTop:3,flexWrap:"wrap"}}>
                         {totalMp>0&&<span style={{fontFamily:"monospace",fontSize:9,color:"#a855f7",background:"rgba(168,85,247,0.12)",borderRadius:4,padding:"1px 5px"}}>{totalMp+"人時"}</span>}
                         {spent>0&&<span style={{fontFamily:"monospace",fontSize:9,color:"#f97316",background:"rgba(249,115,22,0.12)",borderRadius:4,padding:"1px 5px"}}>{fmt(spent)}</span>}
@@ -253,8 +287,8 @@ function GanttView({tasks,onSave}){
                     <div style={{position:"relative",height:72,flex:1,overflow:"visible"}}>
                       {barW>0&&(
                         <div style={{position:"absolute",top:28,left:barL-clipL,width:barW,height:26,borderRadius:6,background:clr+"35",border:"1px solid "+clr+"55",overflow:"hidden"}}>
-                          <div style={{position:"absolute",top:0,left:0,height:"100%",width:(task.progress||0)+"%",background:clr+"70",borderRadius:6}}/>
-                          {barW>44&&<div style={{position:"absolute",top:"50%",left:6,transform:"translateY(-50%)",fontSize:10,fontFamily:"monospace",color:"#fff",whiteSpace:"nowrap"}}>{(task.progress||0)>0?(task.progress+"%"):""}</div>}
+                          <div style={{position:"absolute",top:0,left:0,height:"100%",width:timeProgress(task.start,task.end)+"%",background:clr+"70",borderRadius:6}}/>
+                          {barW>44&&<div style={{position:"absolute",top:"50%",left:6,transform:"translateY(-50%)",fontSize:10,fontFamily:"monospace",color:"#fff",whiteSpace:"nowrap"}}>{timeProgress(task.start,task.end)+"%"}</div>}
                         </div>
                       )}
                       {(task.expenses||[]).map((e,ei)=>{
